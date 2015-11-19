@@ -15,15 +15,16 @@ using  namespace Eigen;//Eigen::Matrix2Xd, Eigen::MatrixXd,Eigen::MatrixXi,Eigen
 const int N=100;
 const double d=1;
 const double h=2*d;
-const double rho_0=100;
+const double rho_0=1000;
 const double m=d*d*d*rho_0;
 const double mu=1.;
-const double cutOff=3;
-const double k=1;
+const double cutOff=h;
+const int boundary=20;
+const double k=1000;
 
 const double g=9.81;
 const int N_steps=10;
-const double dt=0.1; //1/h
+const double dt=1./h; //1/h
 
 
 
@@ -49,10 +50,11 @@ sph::sph()//MatrixX2d& x, MatrixX2d& u, VectorXd& rho,VectorXd& p,MatrixXi& neig
         }
         x(i,1)=d*(q);
         x(i,2)=d*((qq));
-        u(i,0)=dis(mt_rand);
-        u(i,1)=dis(mt_rand);
-        u(i,2)=dis(mt_rand);
-        p(i)=rho(i)=1.1;
+        u(i,0)=1.;//dis(mt_rand);
+        u(i,1)=1.;//dis(mt_rand);
+        u(i,2)=1.;//dis(mt_rand);
+        p(i)=0;
+        rho(i)=rho_0;
         //std::cout <<x(i,0);
     }
      neighbours=MatrixXi::Zero(N,N);
@@ -120,7 +122,7 @@ void sph::computeDensity(int i)//VectorXd& rho,int i,MatrixX2d& x,MatrixXi& neig
 
 void sph::computePressure(int i)//VectorXd& p,int i,Vector2d& rho)
 {
-    double rho_0=0.1;
+  //  double rho_0=0.1;
     p(i)=k*(rho(i)-rho_0);
 }
 
@@ -139,9 +141,9 @@ void sph::computeForce(int i)//,MatrixX2d& f,VectorXd& p,MatrixX2d& u, MatrixX2d
         {
             temp(0)=x(i,0)-x(j,0);
             temp(1)=x(i,1)-x(j,1);
-            f_p(i,1)-= m/rho(j)*(p(i)+p(j))/2.*w_grad(std::abs(x(i,1)-x(j,1)));
-            f_p(i,0)-= m/rho(j)*(p(i)+p(j))/2.*w_grad(std::abs(x(i,0)-x(j,0)));
-            f_p(i,2)-= m/rho(j)*(p(i)+p(j))/2.*w_grad(std::abs(x(i,2)-x(j,2)));
+            f_p(i,1)+= m/rho(j)*(p(i)+p(j))/2.*w_grad(std::abs(x(i,1)-x(j,1)));
+            f_p(i,0)+= m/rho(j)*(p(i)+p(j))/2.*w_grad(std::abs(x(i,0)-x(j,0)));
+            f_p(i,2)+= m/rho(j)*(p(i)+p(j))/2.*w_grad(std::abs(x(i,2)-x(j,2)));
 
            f_vis(i,1)+=mu*(m/rho(j))*u(j,1)-u(i,1)*w_grad2(std::abs(x(i,1)-x(j,1)));
             f_vis(i,0)+=mu*(m/rho(j))*u(j,0)-u(i,0)*w_grad2(std::abs(x(i,0)-x(j,0)));
@@ -150,11 +152,12 @@ void sph::computeForce(int i)//,MatrixX2d& f,VectorXd& p,MatrixX2d& u, MatrixX2d
         }
         
     }
-    for (int j=0;j<N; ++j) {
-        f(i,1)= -f_p(i,1) +f_vis(i,1) +g;//+f_grav(i);
+    
+  //  for (int j=0;j<N; ++j) {
+        f(i,1)= -f_p(i,1) +f_vis(i,1) ;//+f_grav(i);
         f(i,0)= -f_p(i,0) +f_vis(i,0); //+f_grav(i);
         f(i,2)= -f_p(i,2) +f_vis(i,2);
-    }
+    //}
 }
                        
                        
@@ -165,7 +168,11 @@ void sph::step()//MatrixX2d& u,MatrixX2d& x,double dt,MatrixXi& neighbours,Vecto
     }
     for (int i=0; i<N; ++i) {
         computeDensity(i);//rho,i,x,neighbours);
-       p(i)=k*(rho(i)-rho_0);// computePressure(i);
+        double tempp=k*(rho(i)-rho_0);
+        if(tempp>0)
+        {
+        p(i)=tempp;// computePressure(i);
+        }else {p(i)=0.;}
         
     }
   //  std::cout <<p.size();
@@ -178,13 +185,13 @@ void sph::step()//MatrixX2d& u,MatrixX2d& x,double dt,MatrixXi& neighbours,Vecto
         u(i,0) += dt*f(i,0)/rho(i);
         u(i,2) += dt*f(i,2)/rho(i);
         
-        if((x(i,1)+ dt*u(i,1))<0) {     //collision detection with boundaries
+        if((x(i,1)+ dt*u(i,1))<0.) {     //collision detection with boundaries
           x(i,1)=0.;
-             //u(i,1)=-u(i,1);
-        }else if(x(i,1)+dt*u(i,1)>10)
+             u(i,1)=-u(i,1);
+        }else if(x(i,1)+dt*u(i,1)>boundary)
         {
             x(i,1)=10.;
-            // u(i,1)=-u(i,1);
+             u(i,1)=-u(i,1);
         }else
         {
             x(i,1) += dt*u(i,1);
@@ -192,11 +199,11 @@ void sph::step()//MatrixX2d& u,MatrixX2d& x,double dt,MatrixXi& neighbours,Vecto
         
         if((x(i,0)+ dt*u(i,0))<0) {
             x(i,0)=0.;
-            //u(i,0)=-u(i,0);
-        }else if(x(i,0)+dt*u(i,0)>10)
+            u(i,0)=-u(i,0);
+        }else if(x(i,0)+dt*u(i,0)>boundary)
         {
             x(i,0)=10.;
-             //u(i,0)=-u(i,0);
+             u(i,0)=-u(i,0);
         }else
         {
             x(i,0) += dt*u(i,0);
@@ -204,16 +211,23 @@ void sph::step()//MatrixX2d& u,MatrixX2d& x,double dt,MatrixXi& neighbours,Vecto
         
         if((x(i,2)+ dt*u(i,2))<0) {
             x(i,2)=0.;
-            //u(i,0)=-u(i,0);
-        }else if(x(i,2)+dt*u(i,2)>10)
+            u(i,2)=-u(i,2);
+        }else if(x(i,2)+dt*u(i,2)>boundary)
         {
             x(i,2)=10.;
-            //u(i,0)=-u(i,0);
+            u(i,2)=-u(i,2);
         }else
         {
             x(i,2) += dt*u(i,2);
         }
+        x(i,0) += dt*u(i,0);
+        x(i,1) += dt*u(i,1);
+        x(i,2) += dt*u(i,2);
+
+       // std::cout << "( "<<f(i,0)<<", "<<f(i,1)<<", "<<f(i,2)<<" )\n";
+       // std::cout <<"( "<<neighbours(i,1)<<", " <<neighbours(i,2)<<", " <<neighbours(i,3)<<", " <<neighbours(i,4)<<", " <<neighbours(i,5)<<", " <<neighbours(i,6)<<", " <<neighbours(i,7)<<" )"<<std::endl;
     }
+    
     
     
 }
