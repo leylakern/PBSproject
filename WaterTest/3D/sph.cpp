@@ -1,6 +1,5 @@
 
-//TODO: implement 2dim derivatives and forces (-> currently not corract)
-
+//TODO: reset rho(i) to 0 or rho_0 in computedensity???
 #include <iostream>
 #include <Eigen/Dense>
 #include <cmath>
@@ -12,29 +11,29 @@ using  namespace Eigen;//Eigen::Matrix2Xd, Eigen::MatrixXd,Eigen::MatrixXi,Eigen
 
 
 
-const int N=200;
-const double d=1.;
-const double h=2*d;
+const int N=300;
+const double d=0.05; //1.
+const double h=0.100001;//2*d;
 const double rho_0=1000;
-const double m=d*d*d*rho_0;
-const double mu=10;
+const double m=0.125;//d*d*d*rho_0;
+const double mu=25;
 const double cutOff=h;
-const int boundary=11;
-const double k=1100;
+const double boundary=0.5;
+const double k=1000;
 
 const double g=9.81;
 const int N_steps=10;
-const double dt=0.01; //1/h
+const double dt=0.001;
 
 
 
-sph::sph()//MatrixX2d& x, MatrixX2d& u, VectorXd& rho,VectorXd& p,MatrixXi& neighbours)
+sph::sph()
 {
     std::mt19937 mt_rand(42);
     std::uniform_real_distribution<double> dis(0.0, 1.0);
    
-    u=MatrixX3d::Zero(N,3);//= MatrixX2d::Random(N,2);//std::vector<double> u(2*N);
-     x=MatrixX3d::Zero(N,3);
+    u=MatrixX3d::Zero(N,3);
+    x=MatrixX3d::Zero(N,3);
     f=MatrixX3d::Zero(N,3);
 
     rho=VectorXd::Zero(N);
@@ -49,31 +48,30 @@ sph::sph()//MatrixX2d& x, MatrixX2d& u, VectorXd& rho,VectorXd& p,MatrixXi& neig
             q=0;
         }
         x(i,1)=d*(q);
-        x(i,2)=d*((qq));
-        u(i,0)=10*dis(mt_rand);
-        u(i,1)=5*dis(mt_rand);
-        u(i,2)=0.;//dis(mt_rand);
+        x(i,2)=d*((qq))+0.1;
+        
+        u(i,0)=0;//-10*dis(mt_rand);
+        u(i,1)=0;//10*dis(mt_rand);
+        u(i,2)=0;//10*dis(mt_rand);
         p(i)=0.;
         rho(i)=rho_0;
-        //std::cout <<x(i,0);
+        
     }
      neighbours=MatrixXi::Zero(N,N);
-   // pppp=1000;
+   
 }
 
-void sph::searchNeighbour(int i)//,MatrixX2d& x,MatrixXi& neighbours)
+void sph::searchNeighbour(int i)
 {
     Vector3d temp=Vector3d::Zero(3);
-	//TODO: adapt to cell list!
+	
     for (int j=0; j< N ; ++j) { //loop over all particles
         if (j!=i)
         {
-         //   std::cout << x.size() <<"\n";
-           // temp=Vector3d(x(i,0)-x(j,0),x(i,1)-x(j,1),x(i,2)-x(j,2));
             temp(0) =x(i,0)-x(j,0);
             temp(1)=x(i,1)-x(j,1);
             temp(2)=x(i,2)-x(j,2);
-            if(temp.norm()<cutOff){// if ((x(i)-x(j)).norm())<cutOff) {
+            if(temp.norm()<cutOff){
                 neighbours(i,j)=1;
                 neighbours(j,i)=1;
             }else{ neighbours(i,j)=0;
@@ -100,9 +98,9 @@ double sph::w_grad(double x_ij) //derivative of poly6 kernel
   
     if((x_ij<=h)&&(x_ij>=0))
     {
-        //return -315*6/(64*M_PI*std::pow(h,9))*std::pow((h*h-x_ij*x_ij),2)*x_ij;
+        //return -315*6/(64*M_PI*std::pow(h,9))*std::pow((h*h-x_ij*x_ij),2)*x_ij; //poly6
        // return -45./(M_PI*std::pow(h,6))*1./x_ij*std::pow((h-x_ij),2);
-        return -45./(M_PI*std::pow(h,6))*std::pow((h-x_ij),2);
+        return -45./(M_PI*std::pow(h,6))*std::pow((h-x_ij),2); //spiky
     }
     return 0.;
 }
@@ -118,12 +116,12 @@ double sph::w_grad2(double x_ij)
     return 0.;
 }
 
-void sph::computeDensity(int i)//VectorXd& rho,int i,MatrixX2d& x,MatrixXi& neighbours)
+void sph::computeDensity(int i)
 {
     
     Vector3d temp=Vector3d::Zero(3);
     double rho_temp=0.;
-    rho(i)=0.;
+    rho(i)=rho_0;
     for (int j=0; j<N; ++j)
     {
         if ((neighbours(i,j)==1)&& (j!=i))
@@ -135,17 +133,17 @@ void sph::computeDensity(int i)//VectorXd& rho,int i,MatrixX2d& x,MatrixXi& neig
         }
 
     }
-   // rho(i)=rho_temp;
+   
 }
 
-void sph::computePressure(int i)//VectorXd& p,int i,Vector2d& rho)
+void sph::computePressure(int i)
 {
     if((rho(i)-rho_0)>0.){
         p(i)=k*(rho(i)-rho_0);
     }else{p(i)=0.;}
 }
 
-void sph::computeForce(int i)//,MatrixX2d& f,VectorXd& p,MatrixX2d& u, MatrixX2d& x,VectorXd& rho,MatrixXi& neighbours)
+void sph::computeForce(int i)
 {
     
     VectorXd f_grav(p.size());
@@ -195,17 +193,11 @@ void sph::step()//MatrixX2d& u,MatrixX2d& x,double dt,MatrixXi& neighbours,Vecto
     for (int i=0; i<N; ++i) {
         computeDensity(i);//rho,i,x,neighbours);
         computePressure(i);
-       // double tempp=k*(rho(i)-rho_0);
-       /* if(tempp>0)
-        {*/
-      //  p(i)=tempp;// computePressure(i);
-      /*  }else {p(i)=0.;}
-        */
     }
-  //  std::cout <<p.size();
+ 
     for (int i=0; i<N; ++i)
     {
-        computeForce(i);//,f,p,u,x,rho,neighbours);
+        computeForce(i);
     }
     for (int i=0; i<N; ++i) {
         u(i,1) += dt*f(i,1)/rho(i);
@@ -213,12 +205,12 @@ void sph::step()//MatrixX2d& u,MatrixX2d& x,double dt,MatrixXi& neighbours,Vecto
         u(i,2) += dt*f(i,2)/rho(i);
         
         if((x(i,1)+ dt*u(i,1))<0.) {     //collision detection with boundaries
-          x(i,1)=0.;
-            u(i,1)=-u(i,1);
+            x(i,1)=0.;
+            u(i,1)=-0.1*u(i,1);
         }else if((x(i,1)+dt*u(i,1))>=boundary)
         {
             x(i,1)=boundary;
-            u(i,1)=-u(i,1);
+            u(i,1)=-0.1*u(i,1);
         }else
         {
             x(i,1) += dt*u(i,1);
@@ -226,11 +218,11 @@ void sph::step()//MatrixX2d& u,MatrixX2d& x,double dt,MatrixXi& neighbours,Vecto
         
         if((x(i,0)+ dt*u(i,0))<=0) {
             x(i,0)=0.;
-            u(i,0)=-u(i,0);;
+            u(i,0)=-0.1*u(i,0);;
         }else if((x(i,0)+dt*u(i,0))>=boundary)
         {
             x(i,0)=boundary;
-            u(i,0)=-u(i,0);
+            u(i,0)=-0.1*u(i,0);
         }else
         {
             x(i,0) += dt*u(i,0);
@@ -238,11 +230,11 @@ void sph::step()//MatrixX2d& u,MatrixX2d& x,double dt,MatrixXi& neighbours,Vecto
         
         if((x(i,2)+ dt*u(i,2))<=0.) {
             x(i,2)=0.;
-            u(i,2)=-u(i,2);
+            u(i,2)=-0.1*u(i,2);
         }else if((x(i,2)+dt*u(i,2))>=boundary)
         {
             x(i,2)=boundary;
-            u(i,2)=-u(i,2);
+            u(i,2)=-0.1*u(i,2);
         }else
         {
             x(i,2) += dt*u(i,2);
@@ -250,8 +242,8 @@ void sph::step()//MatrixX2d& u,MatrixX2d& x,double dt,MatrixXi& neighbours,Vecto
         //x(i,0) += dt*u(i,0);
         //x(i,1) += dt*u(i,1);
     //x(i,2) += dt*u(i,2);
-
-      //  std::cout <<"x:  "<<x(i,0)<<", "<<x(i,1)<<", "<<x(i,2)<<" )"<<"        f:  "<<f(i,0)<<", "<<f(i,1)<<", "<<f(i,2)<<"      p:  "<<p(i)<<"\n";
+//if((i==1)||(i==51))
+  //      std::cout <<"x:  "<<x(i,0)<<", "<<x(i,1)<<", "<<x(i,2)<<" )"<<"        f:  "<<f(i,0)<<", "<<f(i,1)<<", "<<f(i,2)<<"      p:  "<<p(i)<<"      rho:  "<<rho(i)<<"\n";
        // std::cout<<p(i)<<"   "<<rho(i)<<"\n";
       //  std::cout <<"( "<<neighbours(i,1)<<", " <<neighbours(i,2)<<", " <<neighbours(i,3)<<", " <<neighbours(i,4)<<", " <<neighbours(i,5)<<", " <<neighbours(i,6)<<", " <<neighbours(i,7)<<" )"<<std::endl;
     }
@@ -259,15 +251,15 @@ void sph::step()//MatrixX2d& u,MatrixX2d& x,double dt,MatrixXi& neighbours,Vecto
     
     
 }
-void sph::render()//MatrixX2d& x)
+void sph::render()
 {
-   // glColor3f(1,10,0.5);
+    glColor3f(1,10,0.5);
     for(int i=0; i<N; i++)
     {
         glPushMatrix();
         {
             glTranslated(x(i,0), x(i,1), x(i,2));
-            glutSolidSphere(0.3, 50, 50);
+            glutSolidSphere(0.01, 100, 100);
         }
         glPopMatrix();
     }
