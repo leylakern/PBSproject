@@ -12,9 +12,9 @@ using  namespace Eigen;//Eigen::Matrix2Xd, Eigen::MatrixXd,Eigen::MatrixXi,Eigen
 
 
 
-const int N=500;
+const int N=100;
 const double d=0.05;//1.;
-const double h=2*d;
+const double h=0.025;//0.100001;//2*d;
 const double rho_0=1000;
 const double m=0.125;//d*d*d*rho_0;
 const double mu=25;//1.;
@@ -29,6 +29,7 @@ const double dt=0.001; //1/h
 const int lcx=10, lcy=10, lcz=10;
 const int N_cells=lcy*lcz*lcx;
 const double rc=boundary/N_cells; //assume symmetric cellls grid in all directions
+
 
 
 
@@ -63,15 +64,15 @@ sph::sph()//MatrixX2d& x, MatrixX2d& u, VectorXd& rho,VectorXd& p,MatrixXi& neig
         
         x(i,0)=d*(i%10);
         if(i%10==0){++q;}
-        if(i%100==0)
+        if(i%50==0)
         {
             ++qq;
             q=0;
         }
         x(i,1)=d*(q);
         x(i,2)=d*((qq));
-        u(i,0)=5*dis(mt_rand);
-        u(i,1)=5*dis(mt_rand);
+        u(i,0)=0.;//5*dis(mt_rand);
+        u(i,1)=0.;//5*dis(mt_rand);
         u(i,2)=0.;//dis(mt_rand);
         p(i)=0.;
         rho(i)=rho_0;
@@ -157,7 +158,7 @@ void sph::computeDensity(int i)//VectorXd& rho,int i,MatrixX2d& x,MatrixXi& neig
     
     Vector3d temp=Vector3d::Zero(3);
     double rho_temp=0.;
-    rho(i)=0.;
+    rho(i)=rho_0;
     for (int j=0; j<N; ++j)
     {
         if ((neighbours(i,j)==1)&& (j!=i))
@@ -229,7 +230,6 @@ void sph::step()//MatrixX2d& u,MatrixX2d& x,double dt,MatrixXi& neighbours,Vecto
     Vector3d temp=Vector3d::Zero(3);
     
     VectorXd f_grav(p.size());
-    
     MatrixX3d f_vis=MatrixX3d::Zero(p.size(),3);
     MatrixX3d f_p=MatrixX3d::Zero(p.size(),3);
    // Vector3d temp= Vector3d::Zero(3);
@@ -246,7 +246,7 @@ void sph::step()//MatrixX2d& u,MatrixX2d& x,double dt,MatrixXi& neighbours,Vecto
                         for (int nbcz=(mcz); nbcz<=mcz; ++nbcz) {
                             
                             //
-                            
+
                             cl= ((nbcx+lcx)%lcx)*lcy*lcz+((nbcy+lcy)%lcy)*lcz+((nbcz+lcz)%lcz);
                             
                             ii=head(cl);
@@ -259,7 +259,7 @@ void sph::step()//MatrixX2d& u,MatrixX2d& x,double dt,MatrixXi& neighbours,Vecto
                                 rho(ii)=rho_0;
                                 while (j!=(-1))
                                 {
-                                    if(ii<j)
+                                   if(ii<j)
                                     {
                                         r=(Vector3f(x(ii,0)-x(j,0),x(ii,1)-x(j,1),x(ii,2)-x(j,2))).squaredNorm();
                                         if(r< cutOff*cutOff)
@@ -271,10 +271,6 @@ void sph::step()//MatrixX2d& u,MatrixX2d& x,double dt,MatrixXi& neighbours,Vecto
                                             temp(1)=x(ii,1)-x(j,1);
                                             temp(2)=x(ii,2)-x(j,2);*/
                                             rho(ii)+=m*w(std::sqrt(r));
-                                            
-                                        
-                                            
-                                            
                                             
                                             
                                         }
@@ -342,25 +338,21 @@ void sph::step()//MatrixX2d& u,MatrixX2d& x,double dt,MatrixXi& neighbours,Vecto
                                             f_p(ii,0)+= m*(p(ii)+p(j))/(rho(j)*2.)*(x(ii,0)-x(j,0))*w_grad(t_norm);
                                             
                                             f_p(ii,2)+=m*(p(ii)+p(j))/(rho(j)*2.)*(x(ii,2)-x(j,2))*w_grad(t_norm);
-                                            
-                                            
+                                  
                                             
                                             f_vis(ii,1)+=mu*(m/rho(j))*(u(j,1)-u(ii,1))*w_grad2(t_norm);
                                             f_vis(ii,0)+=mu*(m/rho(j))*(u(j,0)-u(ii,0))*w_grad2(t_norm);
                                             f_vis(ii,2)+=mu*(m/rho(j))*(u(j,2)-u(ii,2))*w_grad2(t_norm);
-
-                                            
-                                            
-                                            
+                      
                                             
                                         }
                                     }
                                     j=lscl[j];
                                     
                                 }
-                                f(ii,1)= -f_p(ii,1) +f_vis(ii,1) ;//+f_grav(i);
-                                f(ii,0)= -f_p(ii,0) +f_vis(ii,0); //+f_grav(i);
-                                f(ii,2)= -f_p(ii,2) +f_vis(ii,2)-g*rho(ii);//*rho(i);
+                                f(ii,1)= -f_p(ii,1);// +f_vis(ii,1) ;//+f_grav(i);
+                                f(ii,0)= -f_p(ii,0) ;//+f_vis(ii,0); //+f_grav(i);
+                                f(ii,2)= -f_p(ii,2)- rho(ii)*g; //+f_vis(ii,2)-g*rho(ii);//*rho(i);
                                 ii=lscl[ii];
                             }
                         }
@@ -421,12 +413,14 @@ void sph::step()//MatrixX2d& u,MatrixX2d& x,double dt,MatrixXi& neighbours,Vecto
         {
             x(i,2) += dt*u(i,2);
         }
+        
+        
        // x(i,0) += dt*u(i,0);
      //   x(i,1) += dt*u(i,1);
     //x(i,2) += dt*u(i,2);
 
-      //  std::cout <<"x:  "<<u(i,0)<<", "<<u(i,1)<<", "<<u(i,2)<<" )"<<"        f:  "<<f(i,0)<<", "<<f(i,1)<<", "<<f(i,2)<<"      p:  "<<p(i)<<"\n";
-      //  std::cout<<p(i)<<"   "<<rho(i)<<"\n";
+//        std::cout <<"x:  "<<u(i,0)<<", "<<u(i,1)<<", "<<u(i,2)<<" )"<<"        f:  "<<f(i,0)<<", "<<f(i,1)<<", "<<f(i,2)<<"      p:  "<<p(i)<<"\n";
+      // std::cout<<p(i)<<"   "<<f(i,0)<<"\n";
       //  std::cout <<"( "<<neighbours(i,1)<<", " <<neighbours(i,2)<<", " <<neighbours(i,3)<<", " <<neighbours(i,4)<<", " <<neighbours(i,5)<<", " <<neighbours(i,6)<<", " <<neighbours(i,7)<<" )"<<std::endl;
     }
     
@@ -435,15 +429,15 @@ void sph::step()//MatrixX2d& u,MatrixX2d& x,double dt,MatrixXi& neighbours,Vecto
 }
 void sph::render()//MatrixX2d& x)
 {
-   // glColor3f(1,0.,0.0);
+    glColor3f(1,0.,0.0);
     for(int i=0; i<N; i++)
     {
         glPushMatrix();
         {
-            glColor3f(std::abs(u(i,0))/10.,std::abs(u(i,0))/10.,std::abs(u(i,0))/10.);
+           // glColor3f(std::abs(u(i,0))/10.,std::abs(u(i,0))/10.,std::abs(u(i,0))/10.);
 
             glTranslated(x(i,0), x(i,1), x(i,2));
-            glutSolidSphere(0.01, 100, 100);
+            glutSolidSphere(0.015, 100, 100);
         }
         glPopMatrix();
     }
