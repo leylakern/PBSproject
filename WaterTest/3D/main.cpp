@@ -13,8 +13,8 @@ unsigned int stepping= 10000; //(unsigned int)(1e6 * Scene::step);
 // camera parameters
 float sphi = 0.0;
 float stheta = 0.0;
-float sdepth = 100;
-float zNear = 1.0, zFar = 1000.0;
+float sdepth = 10;
+float zNear = 0.01, zFar = 100.0;
 
 float windowWidth = 600;
 float windowHeight = 600;
@@ -22,8 +22,8 @@ float windowHeight = 600;
 int downX;
 int downY;
 
-float gridWidth = 5.0;
-int gridNum = 20;
+float gridWidth = 1.0;
+int gridNum = 10;
 
 char transMode = 'r';
 bool isPlaying = true;
@@ -115,7 +115,7 @@ void display(void)
           obj->step();
       }
     }
-obj->render();
+ obj->render();
     
     dispGrid();
     
@@ -170,6 +170,8 @@ void motion(int x, int y)
 void keyboard(unsigned char key, int x, int y)
 {
     switch(key){
+        case 'l':
+            obj->expand();
       // rotating mode
       case 'r':
         transMode = key;
