@@ -11,7 +11,7 @@ using  namespace Eigen;//Eigen::Matrix2Xd, Eigen::MatrixXd,Eigen::MatrixXi,Eigen
 
 
 
-const int N=300;
+const int N_start=100;
 const double d=0.05; //1.
 const double h=0.100001;//2*d;
 const double rho_0=1000;
@@ -19,6 +19,7 @@ const double m=0.125;//d*d*d*rho_0;
 const double mu=25;
 const double cutOff=h;
 const double boundary=0.5;
+
 const double k=1000;
 
 const double g=9.81;
@@ -29,6 +30,7 @@ const double dt=0.001;
 
 sph::sph()
 {
+    N=N_start;
     std::mt19937 mt_rand(42);
     std::uniform_real_distribution<double> dis(0.0, 1.0);
    
@@ -204,7 +206,7 @@ void sph::step()//MatrixX2d& u,MatrixX2d& x,double dt,MatrixXi& neighbours,Vecto
         u(i,0) += dt*f(i,0)/rho(i);
         u(i,2) += dt*f(i,2)/rho(i);
         
-        if((x(i,1)+ dt*u(i,1))<0.) {     //collision detection with boundaries
+    /*    if((x(i,1)+ dt*u(i,1))<0.) {     //collision detection with boundaries
             x(i,1)=0.;
             u(i,1)=-0.1*u(i,1);
         }else if((x(i,1)+dt*u(i,1))>=boundary)
@@ -238,14 +240,11 @@ void sph::step()//MatrixX2d& u,MatrixX2d& x,double dt,MatrixXi& neighbours,Vecto
         }else
         {
             x(i,2) += dt*u(i,2);
-        }
-        //x(i,0) += dt*u(i,0);
-        //x(i,1) += dt*u(i,1);
-    //x(i,2) += dt*u(i,2);
-//if((i==1)||(i==51))
-  //      std::cout <<"x:  "<<x(i,0)<<", "<<x(i,1)<<", "<<x(i,2)<<" )"<<"        f:  "<<f(i,0)<<", "<<f(i,1)<<", "<<f(i,2)<<"      p:  "<<p(i)<<"      rho:  "<<rho(i)<<"\n";
-       // std::cout<<p(i)<<"   "<<rho(i)<<"\n";
-      //  std::cout <<"( "<<neighbours(i,1)<<", " <<neighbours(i,2)<<", " <<neighbours(i,3)<<", " <<neighbours(i,4)<<", " <<neighbours(i,5)<<", " <<neighbours(i,6)<<", " <<neighbours(i,7)<<" )"<<std::endl;
+        }*/
+        x(i,0) += dt*u(i,0);
+        x(i,1) += dt*u(i,1);
+    x(i,2) += dt*u(i,2);
+
     }
     
     
@@ -266,41 +265,37 @@ void sph::render()
 }
 
 
-/*int main()
+void sph::expand()
 {
-    std::mt19937 mt_rand(42);
-    std::uniform_real_distribution<double> dis(0.0, 1.0);
-    int x_size;
-    MatrixX2d u=MatrixX2d::Zero(N,2);//= MatrixX2d::Random(N,2);//std::vector<double> u(2*N);
-    MatrixX2d x=MatrixX2d::Zero(N,2);
-    
-    VectorXd rho(N);
-    VectorXd p(N);
-    
-    for (int i=0; i<N; ++i) {
-        x(i,0)=dis(mt_rand);
-        x(i,1)=dis(mt_rand);
-        u(i,0)=dis(mt_rand);
-        u(i,1)=dis(mt_rand);
-        p(i)=rho(i)=1.;
-    }
-    MatrixXi neighbours=MatrixXi::Zero(N,N);//std::vector<double> neighbours(N*N,0);
+     N*=2;
+    x.conservativeResize(N,3);
+    u.conservativeResize(N,3);
+    f.conservativeResize(N,3);
+    rho.conservativeResize(N);
+    neighbours.conservativeResize(N,N);
+    p.conservativeResize(N);
 
-    MatrixX2d f(N,2);
- 
-    for (int i=0; i<N; ++i) {
-        std::cout <<"( "<< x(i,0)<<", " <<x(i,1)<<" )"<<std::endl;
+    int q=0;
+    int qq=0;
+    for (int i=(N/2); i<N; ++i) {
+        x(i,0)=d*(i%10);
+        if(i%10==0){++q;}
+        if(i%50==0)
+        {
+            ++qq;
+            q=0;
+        }
+        x(i,1)=d*(q);
+        x(i,2)=d*((qq))+0.1;
+        
+        u(i,0)=0;//-10*dis(mt_rand);
+        u(i,1)=0;//10*dis(mt_rand);
+        u(i,2)=0;//10*dis(mt_rand);
+        p(i)=0.;
+        rho(i)=rho_0;
+        
     }
-    for (int s=0; s<N_steps; ++s)
-    {
-        Step(u,x,0.1,neighbours,p,rho,f);
-    }
-  //  std::cout <<"\n\n ";
-    for (int i=0; i<N; ++i) {
-            std::cout <<"( "<< x(i,0)<<", " <<x(i,1)<<" )"<<std::endl;
-    }
-    for (int i=0; i<N; ++i) {
-        std::cout <<"( "<<neighbours(i,1)<<", " <<neighbours(i,2)<<", " <<neighbours(i,3)<<", " <<neighbours(i,4)<<", " <<neighbours(i,5)<<", " <<neighbours(i,6)<<", " <<neighbours(i,7)<<" )"<<std::endl;
-    }
-    return 0;
-}*/
+    
+
+}
+
