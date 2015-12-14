@@ -15,9 +15,12 @@ public:
     Eigen::VectorXd rho;
     Eigen::VectorXd p;
     Eigen::MatrixX3d f;
+    
+    int N;
 
     void render();
     void update();
+    void expand();
     
     void step();
     void searchNeighbour(int i);
