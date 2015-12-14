@@ -24,13 +24,16 @@ const double k=1000;
 
 const double g=9.81;
 const int N_steps=10;
-const double dt=0.001;
+const double dt=0.01;
+
+const double radius_0=1;
 
 
 
 sph::sph()
 {
     N=N_start;
+    radius_squared=radius_0;
     std::mt19937 mt_rand(42);
     std::uniform_real_distribution<double> dis(0.0, 1.0);
    
@@ -205,7 +208,20 @@ void sph::step()//MatrixX2d& u,MatrixX2d& x,double dt,MatrixXi& neighbours,Vecto
         u(i,1) += dt*f(i,1)/rho(i);
         u(i,0) += dt*f(i,0)/rho(i);
         u(i,2) += dt*f(i,2)/rho(i);
+        double y_t =(x(i,1)+ dt*u(i,1));
+        double x_t=(x(i,0)+ dt*u(i,0));
+        double z_t=(x(i,2)+ dt*u(i,2));
         
+        if ((x_t*x_t+y_t*y_t+z_t*z_t)>radius_squared) {
+             u(i,1)=-0.1*u(i,1);
+            u(i,0)=-0.1*u(i,0);;
+
+        }else{
+            x(i,1) += dt*u(i,1);
+            x(i,0) += dt*u(i,0);
+            x(i,2) += dt*u(i,2);
+
+        }
     /*    if((x(i,1)+ dt*u(i,1))<0.) {     //collision detection with boundaries
             x(i,1)=0.;
             u(i,1)=-0.1*u(i,1);
@@ -241,9 +257,9 @@ void sph::step()//MatrixX2d& u,MatrixX2d& x,double dt,MatrixXi& neighbours,Vecto
         {
             x(i,2) += dt*u(i,2);
         }*/
-        x(i,0) += dt*u(i,0);
-        x(i,1) += dt*u(i,1);
-    x(i,2) += dt*u(i,2);
+//        x(i,0) += dt*u(i,0);
+//        x(i,1) += dt*u(i,1);
+//    x(i,2) += dt*u(i,2);
 
     }
     
@@ -299,3 +315,16 @@ void sph::expand()
 
 }
 
+float sph::getPressure()
+{
+    float p_tot=0;
+    for (int i=0;i<N;++i)
+    {
+        p_tot+=p(i);
+    }
+    return p_tot/N;
+}
+void sph::setRadius(float r_new)
+{
+    radius_squared=r_new*r_new;
+}
