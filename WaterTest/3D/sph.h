@@ -17,10 +17,14 @@ public:
     Eigen::MatrixX3d f;
     
     int N;
+    double radius_squared;
 
     void render();
     void update();
     void expand();
+    float getPressure();
+    void setRadius(float r_new);
+
     
     void step();
     void searchNeighbour(int i);
