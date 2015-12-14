@@ -170,8 +170,18 @@ void motion(int x, int y)
 void keyboard(unsigned char key, int x, int y)
 {
     switch(key){
+            //set a new boundary sphere of size 1.5
+            case 's':
+            obj->setRadius(1.5);
+            break;
+        // double the number of particles
         case 'l':
             obj->expand();
+            break;
+          // print the average pressure
+        case 'g':
+            std::cout << obj->getPressure()<< "\n";
+            break;
       // rotating mode
       case 'r':
         transMode = key;
